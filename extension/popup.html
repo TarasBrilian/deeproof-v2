@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 320px;
+            min-height: 200px;
+            background: linear-gradient(135deg, #0a0a0f 0%, #151520 100%);
+            color: white;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #00F0FF, #0080FF);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(90deg, #00F0FF, #00FF88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #888;
+        }
+
+        .status-icon.verified {
+            background: #00FF88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .status-icon.processing {
+            background: #00F0FF;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-icon.error {
+            background: #FF4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .status-label {
+            color: #888;
+            font-size: 13px;
+        }
+
+        #status {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: linear-gradient(135deg, #00F0FF, #0080FF);
+            color: #000;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .footer {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 11px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">D</div>
+        <h2>Deeproof</h2>
+    </div>
+
+    <div class="status-container">
+        <div class="status-row">
+            <div id="statusIcon" class="status-icon"></div>
+            <span class="status-label">Status:</span>
+            <span id="status">Not Verified</span>
+        </div>
+    </div>
+
+    <button id="verifyBtn">Verify via Binance</button>
+
+    <div class="footer">
+        Privacy-preserving KYC Verification
+    </div>
+
+    <script src="snarkjs.min.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>

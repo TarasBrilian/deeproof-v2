@@ -1,0 +1,66 @@
+{
+    "manifest_version": 3,
+    "name": "Deeproof Verifier",
+    "version": "1.0",
+    "description": "Privacy-preserving KYC Verification via Binance",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://www.binance.com/*",
+        "https://*.ngrok-free.app/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.binance.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "https://www.binance.com/*"
+            ],
+            "js": [
+                "injected.js"
+            ],
+            "run_at": "document_idle",
+            "world": "MAIN"
+        },
+        {
+            "matches": [
+                "http://localhost:3000/*",
+                "http://127.0.0.1:3000/*"
+            ],
+            "js": [
+                "dashboard-bridge.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "injected.js"
+            ],
+            "matches": [
+                "https://www.binance.com/*"
+            ]
+        }
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    }
+}

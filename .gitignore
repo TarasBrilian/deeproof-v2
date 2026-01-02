@@ -1,0 +1,106 @@
+# =====================
+# Dependencies
+# =====================
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# =====================
+# Build Outputs
+# =====================
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# =====================
+# Environment Variables
+# =====================
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.production
+
+# =====================
+# Foundry (Smart Contracts)
+# =====================
+contract/out/
+contract/cache/
+contract/broadcast/
+
+# =====================
+# Circom (ZK Circuits)
+# =====================
+# Generated circuit artifacts
+circuits/*.r1cs
+circuits/*.sym
+circuits/*.wasm
+circuits/*.wtns
+circuits/*.zkey
+circuits/*.ptau
+circuits/proof.json
+circuits/public.json
+circuits/verification_key.json
+circuits/verifier.sol
+circuits/identity_js/
+circuits/identity_cpp/
+# Keep input.json as it's the input template
+
+# =====================
+# Extension Build
+# =====================
+extension/dist/
+
+# =====================
+# IDE & Editor
+# =====================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# =====================
+# Testing & Coverage
+# =====================
+coverage/
+.nyc_output/
+
+# =====================
+# Logs
+# =====================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =====================
+# Debug
+# =====================
+.pnpm-debug.log*
+
+# =====================
+# Vercel
+# =====================
+.vercel
+
+# =====================
+# Misc
+# =====================
+*.pem
+*.local
+Thumbs.db
