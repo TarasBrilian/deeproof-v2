@@ -11,7 +11,9 @@
     ],
     "host_permissions": [
         "https://www.binance.com/*",
-        "https://*.ngrok-free.app/*"
+        "https://*.ngrok-free.app/*",
+        "https://deeproof.vercel.app/*",
+        "https://*.vercel.app/*"
     ],
     "background": {
         "service_worker": "background.js"

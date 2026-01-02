@@ -40,7 +40,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case "PROOF_GENERATED":
             // Notify any listening dashboard tabs about new proof
-            chrome.tabs.query({ url: ["http://localhost:3000/*", "http://127.0.0.1:3000/*"] }, (tabs) => {
+            chrome.tabs.query({ url: ["http://localhost:3000/*", "http://127.0.0.1:3000/*", "https://deeproof.vercel.app/*", "https://*.vercel.app/*"] }, (tabs) => {
                 tabs.forEach(tab => {
                     chrome.tabs.sendMessage(tab.id, {
                         type: "PROOF_UPDATE",
