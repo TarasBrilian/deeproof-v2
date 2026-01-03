@@ -1,15 +1,8 @@
-// Content script - bridge between popup and MAIN world
-// Runs in ISOLATED world
-
-// Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "fetch_binance_data") {
         console.log('Deeproof: Requesting captured data from MAIN world');
-
-        // Request captured data from MAIN world (no new API calls)
         window.postMessage({ type: 'DEEPROOF_GET_DATA' }, '*');
 
-        // Wait for response
         const handler = (event) => {
             if (event.source !== window) return;
             if (event.data.type !== 'DEEPROOF_DATA_RESPONSE') return;
@@ -21,7 +14,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         window.addEventListener('message', handler);
 
-        // Timeout after 5 seconds
         setTimeout(() => {
             window.removeEventListener('message', handler);
             sendResponse({
@@ -30,19 +22,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
         }, 5000);
 
-        return true; // Keep channel open
+        return true;
     }
 
     if (request.action === "SHOW_VERIFICATION_PROMPT") {
-        // Show floating notification prompting user to click extension
         showVerificationPrompt();
         sendResponse({ success: true });
     }
 });
 
-// Create and show verification prompt UI
 function showVerificationPrompt() {
-    // Remove existing prompt if any
     const existing = document.getElementById('deeproof-verification-prompt');
     if (existing) existing.remove();
 
@@ -117,12 +106,10 @@ function showVerificationPrompt() {
 
     document.body.appendChild(prompt);
 
-    // Dismiss button
     document.getElementById('deeproof-dismiss').addEventListener('click', () => {
         prompt.remove();
     });
 
-    // Auto-dismiss after 15 seconds
     setTimeout(() => {
         if (document.getElementById('deeproof-verification-prompt')) {
             prompt.remove();
@@ -131,4 +118,3 @@ function showVerificationPrompt() {
 }
 
 console.log("Deeproof: Content script loaded");
-

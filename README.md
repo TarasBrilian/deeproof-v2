@@ -12,13 +12,13 @@ Deeproof enables users to prove their KYC status from trusted identity providers
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              USER FLOW                                       │
+│                              USER FLOW                                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  1. User logs into Binance                                                   │
+│  1. User logs into Binance                                                  │
 │  2. Chrome Extension intercepts API response (userId, kycLevel)             │
 │  3. Extension generates ZK Proof locally (snarkjs + Circom circuit)         │
 │  4. Frontend submits proof to Groth16Verifier contract on Mantle Sepolia    │
-│  5. Proof verification result recorded on-chain                              │
+│  5. Proof verification result recorded on-chain                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────┐     ┌──────────────────┐     ┌──────────────────────────┐

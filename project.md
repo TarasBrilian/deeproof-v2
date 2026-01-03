@@ -46,7 +46,78 @@ Deeproof does not use a simple hashing scheme (`Hash(Email) == DB`). We use a hi
 *   **Circuit (Circom):** Mathematical proof logic.
 *   **Smart Contract:** Merkle Tree Storage & Verification.
 
-### B. Data Flow & Cryptography
+### B. System Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph User["User Browser"]
+        EXT["Chrome Extension"]
+        POPUP["Popup UI"]
+        CONTENT["Content Script"]
+        INJECTED["Injected Script"]
+    end
+
+    subgraph Provider["Identity Provider"]
+        BINANCE["Binance API"]
+    end
+
+    subgraph ZK["Zero-Knowledge Layer"]
+        CIRCUIT["Circom Circuit"]
+        SNARKJS["SnarkJS Prover"]
+        WASM["identity.wasm"]
+        ZKEY["identity_final.zkey"]
+    end
+
+    subgraph Chain["Mantle Sepolia"]
+        VERIFIER["Groth16Verifier Contract"]
+        STORAGE["On-Chain Proof Storage"]
+    end
+
+    subgraph Frontend["Web Dashboard"]
+        DASHBOARD["Next.js Frontend"]
+        WAGMI["Wagmi + Reown"]
+    end
+
+    BINANCE -->|"KYC Data"| INJECTED
+    INJECTED -->|"userId, kycLevel"| CONTENT
+    CONTENT -->|"Captured Data"| POPUP
+    POPUP -->|"Circuit Inputs"| SNARKJS
+    SNARKJS --> WASM
+    SNARKJS --> ZKEY
+    SNARKJS -->|"ZK Proof"| EXT
+    EXT -->|"Proof Data"| DASHBOARD
+    DASHBOARD --> WAGMI
+    WAGMI -->|"verifyProof()"| VERIFIER
+    VERIFIER --> STORAGE
+```
+
+### C. User Flow Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant B as Binance
+    participant E as Extension
+    participant D as Dashboard
+    participant W as Wallet
+    participant C as Smart Contract
+
+    U->>B: Login to Binance
+    B-->>E: API Response (userId, kycLevel)
+    E->>E: Intercept & Store Data
+    U->>E: Click "Verify Identity"
+    E->>E: Generate ZK Proof (local)
+    E-->>D: Send Proof via Bridge
+    U->>D: Click "Process"
+    D->>W: Request Signature
+    W-->>U: Confirm Transaction
+    W->>C: Submit verifyProof()
+    C-->>C: Verify Groth16 Proof
+    C-->>D: Return Verification Result
+    D-->>U: Show "Verified" Status
+```
+
+### D. Data Flow & Cryptography
 
 #### Step 1: Identity Creation (Client Side)
 When data from Reclaim is valid, the Extension generates two secret random numbers:
@@ -69,6 +140,72 @@ When a user wants to log in to an RWA platform:
 3.  **Circuit Logic:**
     *   Proves that the user possesses the Nullifier & Trapdoor whose hash exists inside the Merkle Tree (Valid Member).
     *   Generates a unique hash for that RWA platform (so the user cannot be tracked across platforms).
+
+### E. Cryptographic Process Diagram
+
+```mermaid
+flowchart LR
+    subgraph Input["Private Inputs"]
+        UID["userId"]
+        TRAP["trapdoor"]
+        KYC["userKycLevel"]
+    end
+
+    subgraph Public["Public Input"]
+        MIN["minKycLevel = 2"]
+    end
+
+    subgraph Circuit["Circom Circuit"]
+        CONSTRAINT["KYC Level Check"]
+        POSEIDON["Poseidon Hash"]
+    end
+
+    subgraph Output["Proof Output"]
+        COMMIT["identityCommitment"]
+        PROOF["π (ZK Proof)"]
+    end
+
+    UID --> POSEIDON
+    TRAP --> POSEIDON
+    KYC --> CONSTRAINT
+    MIN --> CONSTRAINT
+    CONSTRAINT -->|"kycLevel == minKycLevel"| POSEIDON
+    POSEIDON --> COMMIT
+    COMMIT --> PROOF
+```
+
+### F. Extension Communication Flow
+
+```mermaid
+flowchart LR
+    subgraph MAIN["MAIN World"]
+        INJ["injected.js"]
+        XHR["XHR/Fetch Hook"]
+    end
+
+    subgraph ISOLATED["ISOLATED World"]
+        CONT["content.js"]
+        BRIDGE["dashboard-bridge.js"]
+    end
+
+    subgraph SW["Service Worker"]
+        BG["background.js"]
+        STORE["chrome.storage"]
+    end
+
+    subgraph PAGE["Web Page"]
+        DASH["Dashboard"]
+        POP["Popup"]
+    end
+
+    XHR -->|"postMessage"| INJ
+    INJ -->|"postMessage"| CONT
+    CONT -->|"chrome.runtime"| BG
+    BG --> STORE
+    POP -->|"chrome.runtime"| BG
+    BG -->|"chrome.tabs"| BRIDGE
+    BRIDGE -->|"postMessage"| DASH
+```
 
 ## 5. Technology Stack
 

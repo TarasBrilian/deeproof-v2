@@ -1,21 +1,53 @@
-// Dashboard Bridge - Content script for frontend-extension communication
-// Injected into localhost:3000 (frontend dashboard)
-
 const EXTENSION_ID = "deeproof-verifier";
+async function wakeUpServiceWorker() {
+    try {
+        await chrome.runtime.sendMessage({ action: "PING" });
+        return true;
+    } catch {
+        return false;
+    }
+}
 
-// Notify dashboard that extension is available
-window.postMessage({ type: "DEEPROOF_EXTENSION_READY", source: EXTENSION_ID }, "*");
+async function sendMessageToBackground(message, maxRetries = 3) {
+    await wakeUpServiceWorker();
 
-// Listen for messages from dashboard
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            if (!chrome.runtime?.id) {
+                throw new Error("Extension context invalidated");
+            }
+
+            const response = await chrome.runtime.sendMessage(message);
+
+            if (chrome.runtime.lastError) {
+                throw new Error(chrome.runtime.lastError.message);
+            }
+
+            return response;
+        } catch (error) {
+            console.warn(`[Deeproof] Message attempt ${attempt}/${maxRetries} failed:`, error.message);
+
+            if (attempt === maxRetries) {
+                throw error;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 200 * attempt));
+            await wakeUpServiceWorker();
+        }
+    }
+}
+
+setTimeout(() => {
+    window.postMessage({ type: "DEEPROOF_EXTENSION_READY", source: EXTENSION_ID }, "*");
+}, 100);
+
 window.addEventListener("message", async (event) => {
-    // Only accept messages from same window
     if (event.source !== window) return;
 
     const { type, payload } = event.data || {};
 
     switch (type) {
         case "DEEPROOF_CHECK_EXTENSION":
-            // Dashboard is checking if extension exists
             window.postMessage({
                 type: "DEEPROOF_EXTENSION_STATUS",
                 source: EXTENSION_ID,
@@ -24,15 +56,12 @@ window.addEventListener("message", async (event) => {
             break;
 
         case "DEEPROOF_REQUEST_PROOF":
-            // Dashboard requesting proof generation
             try {
-                // Forward to background script
-                const response = await chrome.runtime.sendMessage({
+                const response = await sendMessageToBackground({
                     action: "GENERATE_PROOF_FOR_DASHBOARD",
                     platform: payload?.platform || "binance"
                 });
 
-                // Send result back to dashboard
                 window.postMessage({
                     type: "DEEPROOF_PROOF_RESULT",
                     source: EXTENSION_ID,
@@ -48,7 +77,6 @@ window.addEventListener("message", async (event) => {
             break;
 
         case "DEEPROOF_GET_STORED_PROOF":
-            // Dashboard requesting stored proof
             try {
                 const result = await chrome.storage.local.get("deeproofProof");
                 window.postMessage({
@@ -66,22 +94,19 @@ window.addEventListener("message", async (event) => {
             break;
 
         case "DEEPROOF_OPEN_BINANCE":
-            // Dashboard requesting to open Binance and trigger verification
             try {
-                await chrome.runtime.sendMessage({
+                await sendMessageToBackground({
                     action: "OPEN_BINANCE_FOR_VERIFICATION"
                 });
             } catch (error) {
-                console.error("Failed to open Binance:", error);
+                console.error("[Deeproof] Failed to open Binance:", error);
             }
             break;
     }
 });
 
-// Listen for proof updates from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === "PROOF_UPDATE") {
-        // Forward proof update to dashboard
         window.postMessage({
             type: "DEEPROOF_PROOF_UPDATE",
             source: EXTENSION_ID,
@@ -89,7 +114,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }, "*");
         sendResponse({ success: true });
     }
+    return true;
 });
 
 console.log("[Deeproof] Dashboard bridge initialized");
-

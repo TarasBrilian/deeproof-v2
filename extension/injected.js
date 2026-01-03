@@ -1,11 +1,6 @@
-// Injected script - runs in MAIN world (page context)
-// Intercepts XMLHttpRequest to capture Binance user data without making new requests
-
 const TARGET_URL = 'bapi/accounts/v1/private/account/get-user-base-info';
 
 let capturedUserData = null;
-
-// Hook XMLHttpRequest to intercept responses
 const originalOpen = XMLHttpRequest.prototype.open;
 const originalSend = XMLHttpRequest.prototype.send;
 
@@ -35,7 +30,6 @@ XMLHttpRequest.prototype.send = function (...args) {
     return originalSend.apply(this, args);
 };
 
-// Also hook fetch API
 const originalFetch = window.fetch;
 window.fetch = async function (...args) {
     const response = await originalFetch.apply(this, args);
@@ -61,7 +55,6 @@ window.fetch = async function (...args) {
     return response;
 };
 
-// Listen for requests from content script
 window.addEventListener('message', (event) => {
     if (event.source !== window) return;
     if (event.data.type !== 'DEEPROOF_GET_DATA') return;

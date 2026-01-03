@@ -1,14 +1,10 @@
-// Deeproof Extension - Popup Script with ZK Proof Generation
-
 document.addEventListener('DOMContentLoaded', () => {
     const verifyBtn = document.getElementById('verifyBtn');
     const statusEl = document.getElementById('status');
     const statusIcon = document.getElementById('statusIcon');
 
-    // Check existing proof on popup open
     checkExistingProof();
 
-    // Verify button click handler
     verifyBtn.addEventListener('click', () => {
         runVerification();
     });
@@ -26,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
         verifyBtn.disabled = true;
 
         try {
-            // Find Binance tab
             const tabs = await chrome.tabs.query({ url: "https://www.binance.com/*" });
 
             if (tabs.length === 0) {
@@ -37,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateUI('processing', 'Getting user data...');
 
-            // Request captured data from content script
             const response = await chrome.tabs.sendMessage(binanceTab.id, {
                 action: "fetch_binance_data"
             });
@@ -57,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI('processing', 'Generating ZK Proof...');
             console.log(`User Valid (ID: ${userId}). Generating ZK proof...`);
 
-            // Generate ZK Proof
             const trapdoor = generateSecureRandom();
             const circuitInput = {
                 userId: userId.toString(),
@@ -79,25 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log("PROOF GENERATED!", proof);
 
-            // Format proof data untuk Solidity verifyProof
-            // SnarkJS output ada '1' di akhir yang tidak dipakai Solidity
             const pA = [proof.pi_a[0], proof.pi_a[1]];
             const pB = [
-                [proof.pi_b[0][1], proof.pi_b[0][0]], // Solidity butuh koordinat ditukar
+                [proof.pi_b[0][1], proof.pi_b[0][0]],
                 [proof.pi_b[1][1], proof.pi_b[1][0]]
             ];
             const pC = [proof.pi_c[0], proof.pi_c[1]];
             const pubSignals = publicSignals;
 
-            // Log format untuk copy-paste ke Remix
-            console.log("================ COPY KE REMIX ================");
-            console.log("_pA:", JSON.stringify(pA));
-            console.log("_pB:", JSON.stringify(pB));
-            console.log("_pC:", JSON.stringify(pC));
-            console.log("_pubSignals:", JSON.stringify(pubSignals));
-            console.log("===============================================");
-
-            // Save result
             const finalResult = {
                 isVerified: true,
                 provider: "Binance",
@@ -111,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             await chrome.storage.local.set({ deeproofProof: finalResult });
 
-            // Notify background to update dashboard
             chrome.runtime.sendMessage({
                 action: "PROOF_GENERATED",
                 proof: finalResult

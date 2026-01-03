@@ -60,6 +60,8 @@ circuits/identity_cpp/
 # Extension Build
 # =====================
 extension/dist/
+extension/identity_final.zkey
+extension/identity.wasm
 
 # =====================
 # IDE & Editor
