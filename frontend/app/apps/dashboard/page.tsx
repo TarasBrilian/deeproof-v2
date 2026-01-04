@@ -9,8 +9,9 @@ import { useProofVerification } from "@/hooks/useProofVerification";
 import { useAppKit } from "@reown/appkit/react";
 import { useAccount, useChainId } from "wagmi";
 import { mantleSepolia } from "@/lib/wagmiConfig";
+import { submitKyc, getKycStatus } from "@/lib/api";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
 interface LogoOption {
     id: string;
@@ -109,6 +110,31 @@ export default function Dashboard() {
         }
     }, [extension.installed, extension.checking]);
 
+    // Fetch existing KYC status from backend when wallet connects
+    useEffect(() => {
+        if (address && isConnected) {
+            getKycStatus(address).then(status => {
+                if (status?.status === "VERIFIED" && status.provider) {
+                    const providerId = status.provider.toLowerCase();
+                    setOnChainStatus(prev => ({
+                        ...prev,
+                        [providerId]: { pending: false, verified: true }
+                    }));
+                    setVerifiedPlatforms(prev => {
+                        if (!prev.includes(providerId)) {
+                            return [...prev, providerId];
+                        }
+                        return prev;
+                    });
+                    setOnChainVerifiedCount(prev => prev === 0 ? 1 : prev);
+                    console.log("[Backend] Restored KYC status:", status);
+                }
+            }).catch(err => {
+                console.log("[Backend] No existing KYC status:", err);
+            });
+        }
+    }, [address, isConnected]);
+
     // Update proof status when proof is available from extension
     useEffect(() => {
         if (extension.proof?.solidityParams && extension.proof?.provider) {
@@ -129,7 +155,7 @@ export default function Dashboard() {
 
     // Handle on-chain verification success
     useEffect(() => {
-        if (proofVerification.isSuccess && extension.proof?.provider) {
+        if (proofVerification.isSuccess && extension.proof?.provider && address) {
             const provider = extension.proof.provider.toLowerCase();
 
             // Store txHash before reset
@@ -150,7 +176,23 @@ export default function Dashboard() {
             });
             setOnChainVerifiedCount(prev => prev + 1);
 
-            // Delay toast by 5 seconds - store txHash first, then schedule toast
+            // Submit to backend after on-chain success
+            if (txHashToStore && extension.proof.commitment) {
+                submitKyc({
+                    walletAddress: address,
+                    proofReference: extension.proof.commitment,
+                    commitment: extension.proof.commitment,
+                    provider: extension.proof.provider,
+                    txHash: txHashToStore,
+                    kycScore: extension.proof.kycLevel ? extension.proof.kycLevel * 10 : 20,
+                }).then(result => {
+                    console.log("[Backend] KYC submitted:", result);
+                }).catch(err => {
+                    console.error("[Backend] KYC submit error:", err);
+                });
+            }
+
+            // Delay toast by 3 seconds
             if (txHashToStore) {
                 setToastTxHash(txHashToStore);
                 setTimeout(() => {
@@ -160,7 +202,7 @@ export default function Dashboard() {
 
             proofVerification.reset();
         }
-    }, [proofVerification.isSuccess, extension.proof?.provider]);
+    }, [proofVerification.isSuccess, extension.proof?.provider, address]);
 
     const platforms: Platform[] = logoOption.map((opt) => ({
         id: opt.id,

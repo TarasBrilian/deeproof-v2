@@ -1,167 +1,192 @@
-# Deeproof Design System & Brand Guideline
+# Deeproof UI Design Guideline
 
-**Version:** 1.0  
-**Core Philosophy:** "The Invisible Fortress"  
-**Vibe:** Institutional Trust, Cryptographic Privacy, Minimalist, Precision.
-
----
-
-## 1. Brand Personality
-
-**Deeproof** is not a "social app." It is critical security infrastructure.
-
-- **Serious:** Avoid excessive emojis or playful illustrations. We deal with identity and assets.
-- **Precise:** Every pixel and interaction must feel calculated, like a mathematical operation.
-- **Transparent:** The UI must be clear and reassuring, never confusing. Security comes from clarity.
+**Purpose**  
+This document defines the UI and frontend design guidelines for Deeproof.  
+The goal is to ensure a consistent, minimalistic, futuristic, and professional user interface that reflects Deeproof’s core values: privacy, trust, and cryptographic integrity.
 
 ---
 
-## 2. Color Palette (The "Midnight" Theme)
+## 1. Design Principles
 
-The dominant theme is **Dark Mode First** to represent "Deep" (privacy/depth), with bright light accents to represent "Proof" (truth/verification).
+### 1.1 Minimalism with Purpose
+- Every UI element must have a clear function.
+- Avoid decorative elements that do not add meaning or usability.
+- White space is intentional and part of the design system.
 
-### Primary Colors (Background & Surface)
-*Used for the Extension background and Website canvas.*
+### 1.2 Privacy-First Visual Language
+- Never display sensitive or personal data, even as realistic placeholders.
+- Use neutral and abstract terminology such as:
+  - “Verified”
+  - “Proof Generated”
+  - “Identity Bound”
+- Avoid labels like “Name”, “ID Number”, or “Document”.
 
-- **Void Black:** `#050507` (Main Background - Darker than standard black)
-- **Deep Slate:** `#111318` (Cards / Containers)
-- **Gunmetal:** `#1F2229` (Borders / Separators)
+### 1.3 Futuristic but Grounded
+- Futuristic does not mean complex or flashy.
+- Aim for a clean, precise, and mathematical feel.
+- The UI should feel closer to a cryptography tool than a typical fintech app.
 
-### Accent Colors (Action & Status)
-*Used for buttons, status indicators, and interactive elements.*
+---
 
-- **ZK Cyan:** `#00F0FF` (Primary Brand Color - Represents Tech/ZK)
-- **Compliance Green:** `#10B981` (Status: Verified / Success)
-- **Alert Amber:** `#F59E0B` (Status: Verifying / Processing)
-- **Error Red:** `#EF4444` (Status: Failed / Rejected)
+## 2. Visual Style
 
-### Typography Colors
-- **Text Primary:** `#F3F4F6` (High contrast, almost white)
-- **Text Secondary:** `#9CA3AF` (Grey, for labels or descriptions)
-- **Text Muted:** `#4B5563` (For placeholders or disabled text)
+### 2.1 Color Palette
+Use high-contrast colors while keeping the interface calm and focused.
+
+**Primary**
+- Near-black or deep dark background
+- Off-white or light gray for main text
+
+**Accent**
+- Electric blue or cyan for primary actions and verified states
+- Soft green for success states
+- Amber or orange for mild warnings
+
+**Rules**
+- Only one active accent color per screen
+- Avoid excessive gradients or visual noise
 
 ---
 
 ## 3. Typography
 
-We use a combination of modern sans-serif for UI elements and monospaced fonts for cryptographic data.
+### 3.1 Font Style
+- Modern, clean sans-serif fonts
+- Characteristics:
+  - geometric
+  - highly readable at small sizes
+  - not overly rounded or playful
 
-### Primary Font: Inter or Plus Jakarta Sans
-*Used for Headings, Buttons, and Body Text.*
+### 3.2 Hierarchy
+- Titles: clear, short, and informative
+- Subtitles: one-line explanations when possible
+- Body text: no more than 2–3 lines per paragraph
 
-- **Characteristics:** Clean, highly readable at small sizes (crucial for Chrome Extensions).
-- **H1 (Headline):** Bold, Tight letter spacing.
-- **Body:** Regular, optimized for legibility.
+### 3.3 Writing Tone
+- Clear and neutral
+- No marketing exaggeration
 
-### Data Font: JetBrains Mono or Fira Code
-*Used for displaying: Wallet Addresses, Hashes, Commitment IDs, Nullifiers.*
-
-- **Characteristics:** Fixed width, clearly distinguishes 0 (zero) from O (letter).
-- **Example:** `0x71C...9A21`
-
----
-
-## 4. Logo & Iconography
-
-### Logo Concept
-- **Symbol:** A fusion of a Shield and Layers. Alternatively, an abstract "D" shape that resembles a locked vault.
-- **Style:** Line art (thin strokes), geometric, avoiding heavy fill blocks.
-
-### Icon Set
-Use icon packs like **Phosphor Icons** or **Heroicons** with an **Outline style** (approx. 2px stroke).
-
-- **Common Icons:** `ShieldCheck` (Verified), `Lock` (Private), `Fingerprint` (Identity), `Link` (Binding).
+Examples:
+- ❌ “Your identity is now fully secured forever”
+- ✅ “Identity proof successfully generated”
 
 ---
 
-## 5. UI Components (Extension Focus)
+## 4. Layout & Spacing
 
-Since the main product is a Chrome Extension, screen real estate is limited (typically 350px - 400px width).
+### 4.1 Grid System
+- Use a consistent grid layout
+- Avoid uneven or jumping layouts
+- Primary actions should stay within the central focus area
 
-### A. The "Glass" Card (Container)
-Use a subtle glassmorphism effect to create a modern feel without looking cheap.
-
-- **Background:** `rgba(17, 19, 24, 0.8)`
-- **Border:** `1px solid #1F2229`
-- **Backdrop-filter:** `blur(10px)`
-
-### B. Action Button (The "Start" Button)
-The main call-to-action (CTA) must stand out significantly.
-
-- **Style:** Subtle Gradient or Solid ZK Cyan.
-- **Shape:** Rounded corners (4px - 6px). Avoid full "pill shapes" to maintain a serious, industrial look.
-- **Hover State:** Glow effect.
-  - `box-shadow: 0 0 15px rgba(0, 240, 255, 0.3)`
-
-### C. Hash Display
-Never display long hashes in their raw form.
-
-- **Format:** `0x1234...abcd` (Truncated).
-- **Interaction:** Always provide a small "Copy" button next to it.
-- **Background:** Use a very faint grey background (`#1F2229`) around the hash to frame it as a data block.
-
-### D. Status Indicator (Pulse)
-When the system is fetching data from Reclaim (Processing):
-
-- Use a **"Breathing/Pulse"** animation on the logo or container border.
-- Avoid standard spinning loaders. Use a thin, sleek progress bar at the top of the extension.
+### 4.2 Spacing Rules
+- Use generous spacing between sections
+- Do not overload a single screen with information
+- Scrolling is preferred over dense layouts
 
 ---
 
-## 6. UX Writing (Tone of Voice)
+## 5. Animation & Motion
 
-The language should provide clear, calming instructions. It should sound like a secure system, not a chatbot.
+### 5.1 Animation Philosophy
+Animations should be:
+- subtle
+- fast
+- informative
 
-- **Do:** "Verifying your identity commitment..."
-- **Don't:** "Checking who you are..." (Too personal/creepy).
+They exist to explain processes, not to impress visually.
 
-- **Do:** "Binding successful. Your privacy is preserved."
-- **Don't:** "You are connected!" (Too casual).
+### 5.2 Allowed Animations
+- Fade in and fade out
+- Small, subtle slide transitions
+- Progress indicators for:
+  - data fetching
+  - proof generation
+  - transaction submission
 
-**Keywords:** Verify, Commit, Bind, Proof, Secure, Private.
-
----
-
-## 7. Visual Hierarchy (Extension Layout)
-
-1.  **Header:** Deeproof Logo (Left), Wallet Connection Status (Right).
-2.  **Hero Section:** Current User KYC Status.
-    - **Unverified:** Grey Icon, Text: "Identity Unverified".
-    - **Verified:** Large Green Icon, Text: "Verified Human".
-3.  **Action Area:**
-    - **Primary Button:** "Verify via Binance" (if unverified).
-    - **Secondary Button:** "Generate Proof" (if verified).
-4.  **Data Section (Collapsible):**
-    - Display technical details like Commitment ID or Merkle Root only if the user clicks "Show Details". (Don't overwhelm the average user with numbers).
-5.  **Footer:** App Version & Support Link.
+### 5.3 Avoid
+- Bounce or elastic effects
+- Infinite or decorative loops
+- Heavy glow, particles, or flashy effects
 
 ---
 
-## Tailwind Config Concept (Snippet)
+## 6. State & Feedback
 
-```javascript
-// tailwind.config.js snippet
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        background: '#050507',
-        surface: '#111318',
-        border: '#1F2229',
-        primary: {
-          DEFAULT: '#00F0FF', // ZK Cyan
-          dim: 'rgba(0, 240, 255, 0.1)',
-        },
-        success: '#10B981',
-      },
-      fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-      },
-      boxShadow: {
-        'neon': '0 0 10px rgba(0, 240, 255, 0.5)',
-      }
-    },
-  },
-}
-```
+### 6.1 Clear System States
+Every user action must have a clear state:
+- Idle
+- Processing
+- Success
+- Failed
+
+### 6.2 Status Communication
+Use honest and simple system messages:
+- “Generating proof locally…”
+- “Waiting for wallet confirmation”
+- “Proof verified on-chain”
+
+Avoid unnecessary technical jargon, but do not oversimplify to the point of being misleading.
+
+---
+
+## 7. Components Guideline
+
+### 7.1 Buttons
+- Only one primary button per screen
+- Use action-based labels:
+  - “Verify Identity”
+  - “Generate Proof”
+  - “Submit Proof”
+
+### 7.2 Cards
+- Use cards for:
+  - status display
+  - step progression
+  - identity summaries (without personal data)
+- Keep shadows minimal or none
+
+### 7.3 Icons
+- Simple and line-based
+- Consistent style and sizing across the app
+
+---
+
+## 8. UX Philosophy
+
+### 8.1 Invisible Complexity
+- Users do not need to understand ZK, Merkle Trees, or Nullifiers.
+- The UI should only communicate:
+  - what is happening
+  - what the user needs to do
+  - what the result is
+
+### 8.2 Trust Through Clarity
+- Do not hide processes behind vague loading states
+- Show step-by-step progress clearly and briefly
+- It is better to say “this may take a few seconds” than to feel unresponsive
+
+---
+
+## 9. Do & Don’t Summary
+
+### Do
+- Prioritize clarity and consistency
+- Use consistent terminology
+- Treat privacy as a first-class UI requirement
+
+### Don’t
+- Display personal or identifiable data
+- Overuse animations
+- Use excessive marketing language
+- Design the UI like a retail wallet or exchange app
+
+---
+
+## 10. Design Goal
+
+The Deeproof interface should feel like:
+a serious, modern, and trustworthy cryptographic tool  
+not a typical KYC application.
+
+If the UI feels simple yet powerful, the design has succeeded.
