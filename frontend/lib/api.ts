@@ -3,7 +3,8 @@
  * Handles communication with the off-chain coordination layer
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+console.log("[API] Configured Backend URL:", BACKEND_URL);
 
 interface ApiResponse<T> {
     success: boolean;
@@ -12,12 +13,27 @@ interface ApiResponse<T> {
     data?: T;
 }
 
+interface SolidityParams {
+    a: string[];
+    b: string[][];
+    c: string[];
+    input: string[];
+}
+
+interface PendingProof {
+    proofReference: string;
+    solidityParams: SolidityParams;
+    provider: string;
+    commitment: string;
+}
+
 interface KycStatusResponse {
     walletAddress: string;
     status: "PENDING" | "VERIFIED" | "REJECTED";
     kycScore: number;
     provider: string | null;
     verifiedAt: string | null;
+    pendingProof: PendingProof | null;
 }
 
 interface ProtocolCheckResponse {
@@ -34,6 +50,7 @@ interface SubmitKycPayload {
     provider: string;
     txHash?: string;
     kycScore?: number;
+    solidityParams?: SolidityParams;
 }
 
 interface BindIdentityPayload {

@@ -42,6 +42,12 @@ export const submitKycSchema = z.object({
     provider: z.string().optional(),
     txHash: z.string().optional(),
     kycScore: z.number().int().min(0).max(100).optional(),
+    solidityParams: z.object({
+        a: z.array(z.string()),
+        b: z.array(z.array(z.string())),
+        c: z.array(z.string()),
+        input: z.array(z.string()),
+    }).optional(),
 });
 
 // KYC status update schema

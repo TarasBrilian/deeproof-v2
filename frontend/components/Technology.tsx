@@ -10,7 +10,7 @@ import {
 
 export function Technology() {
     return (
-        <section id="technology" className="mb-32">
+        <section id="technology" className="py-24 mb-8">
             <Container>
                 <div className="text-center mb-16 px-4">
                     <h2 className="font-bold text-3xl md:text-4xl mb-6 text-foreground">The Hybrid Oracle Architecture</h2>

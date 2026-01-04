@@ -102,6 +102,15 @@ window.addEventListener("message", async (event) => {
                 console.error("[Deeproof] Failed to open Binance:", error);
             }
             break;
+
+        case "DEEPROOF_CLEAR_PROOF":
+            try {
+                await chrome.storage.local.remove("deeproofProof");
+                console.log("[Deeproof] Stored proof cleared successfully");
+            } catch (error) {
+                console.error("[Deeproof] Failed to clear proof:", error);
+            }
+            break;
     }
 });
 

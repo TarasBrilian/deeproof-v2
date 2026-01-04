@@ -31,6 +31,7 @@ interface ExtensionState {
 interface UseDeepproofExtensionReturn extends ExtensionState {
     requestProof: () => void;
     getStoredProof: () => void;
+    clearProof: () => void;
 }
 
 const EXTENSION_ID = "deeproof-verifier";
@@ -155,9 +156,18 @@ export function useDeepproofExtension(): UseDeepproofExtensionReturn {
         window.postMessage({ type: "DEEPROOF_GET_STORED_PROOF" }, "*");
     }, [state.installed]);
 
+    const clearProof = useCallback(() => {
+        setState(prev => ({ ...prev, proof: null }));
+        // Tell extension to clear stored proof
+        if (state.installed) {
+            window.postMessage({ type: "DEEPROOF_CLEAR_PROOF" }, "*");
+        }
+    }, [state.installed]);
+
     return {
         ...state,
         requestProof,
         getStoredProof,
+        clearProof,
     };
 }

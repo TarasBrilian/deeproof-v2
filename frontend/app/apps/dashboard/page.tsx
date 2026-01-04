@@ -91,6 +91,14 @@ export default function Dashboard() {
     const [onChainVerifiedCount, setOnChainVerifiedCount] = useState(0);
     const [showToast, setShowToast] = useState(false);
     const [toastTxHash, setToastTxHash] = useState<string | null>(null);
+    const [backendStatusFetched, setBackendStatusFetched] = useState(false);
+    // Store pending proof from backend - this is the source of truth
+    const [backendPendingProof, setBackendPendingProof] = useState<{
+        proofReference: string;
+        solidityParams: { a: string[]; b: string[][]; c: string[]; input: string[] };
+        provider: string;
+        commitment: string;
+    } | null>(null);
 
     // Wallet connection
     const { open: openWalletModal } = useAppKit();
@@ -113,8 +121,10 @@ export default function Dashboard() {
     // Fetch existing KYC status from backend when wallet connects
     useEffect(() => {
         if (address && isConnected) {
+            setBackendStatusFetched(false);
             getKycStatus(address).then(status => {
                 if (status?.status === "VERIFIED" && status.provider) {
+                    // User is verified
                     const providerId = status.provider.toLowerCase();
                     setOnChainStatus(prev => ({
                         ...prev,
@@ -127,38 +137,55 @@ export default function Dashboard() {
                         return prev;
                     });
                     setOnChainVerifiedCount(prev => prev === 0 ? 1 : prev);
-                    console.log("[Backend] Restored KYC status:", status);
+                    setBackendPendingProof(null);
+                    console.log("[Backend] Restored VERIFIED status:", status);
+                } else if (status?.status === "PENDING" && status.pendingProof) {
+                    // User has pending proof - restore from backend
+                    const providerId = (status.pendingProof.provider || status.provider || "binance").toLowerCase();
+                    setBackendPendingProof(status.pendingProof as typeof backendPendingProof);
+                    setOnChainStatus(prev => ({
+                        ...prev,
+                        [providerId]: { pending: true, verified: false }
+                    }));
+                    console.log("[Backend] Restored PENDING proof:", status.pendingProof);
                 }
             }).catch(err => {
                 console.log("[Backend] No existing KYC status:", err);
+            }).finally(() => {
+                setBackendStatusFetched(true);
             });
+        } else {
+            setBackendStatusFetched(true);
         }
     }, [address, isConnected]);
 
-    // Update proof status when proof is available from extension
+    // When extension provides a NEW proof, update local status to PENDING
+    // But DO NOT auto-submit to backend. We wait for user to click "Process".
     useEffect(() => {
+        if (!backendStatusFetched || !address || !isConnected) return;
+
         if (extension.proof?.solidityParams && extension.proof?.provider) {
             const provider = extension.proof.provider.toLowerCase();
 
-            // Check if already on-chain verified
-            if (!onChainStatus[provider]?.verified) {
-                setOnChainStatus(prev => ({
-                    ...prev,
-                    [provider]: {
-                        pending: true,
-                        verified: false,
-                    }
-                }));
-            }
+            // If already verified, ignore new proof from extension
+            if (onChainStatus[provider]?.verified) return;
+
+            // Update local state to show pending status
+            setOnChainStatus(prev => ({
+                ...prev,
+                [provider]: { pending: true, verified: false }
+            }));
+
         }
-    }, [extension.proof]);
+    }, [extension.proof, backendStatusFetched, address, isConnected]);
 
     // Handle on-chain verification success
     useEffect(() => {
-        if (proofVerification.isSuccess && extension.proof?.provider && address) {
-            const provider = extension.proof.provider.toLowerCase();
+        // Use backendPendingProof as source of truth for provider
+        const currentProof = backendPendingProof || extension.proof;
 
-            // Store txHash before reset
+        if (proofVerification.isSuccess && currentProof?.provider && address) {
+            const provider = currentProof.provider.toLowerCase();
             const txHashToStore = proofVerification.txHash;
 
             setOnChainStatus(prev => ({
@@ -176,19 +203,27 @@ export default function Dashboard() {
             });
             setOnChainVerifiedCount(prev => prev + 1);
 
-            // Submit to backend after on-chain success
-            if (txHashToStore && extension.proof.commitment) {
+            // Submit to backend with txHash to mark as VERIFIED
+            if (txHashToStore && currentProof.commitment) {
                 submitKyc({
                     walletAddress: address,
-                    proofReference: extension.proof.commitment,
-                    commitment: extension.proof.commitment,
-                    provider: extension.proof.provider,
+                    proofReference: currentProof.commitment,
+                    commitment: currentProof.commitment,
+                    provider: currentProof.provider,
                     txHash: txHashToStore,
-                    kycScore: extension.proof.kycLevel ? extension.proof.kycLevel * 10 : 20,
+                    kycScore: 20,
                 }).then(result => {
-                    console.log("[Backend] KYC submitted:", result);
+                    if (result && result.success) {
+                        console.log("[Backend] KYC VERIFIED submitted:", result);
+                        // Only clear proof if backend submission succeeded
+                        setBackendPendingProof(null);
+                        extension.clearProof();
+                    } else {
+                        console.error("[Backend] KYC submit failed:", result);
+                    }
                 }).catch(err => {
                     console.error("[Backend] KYC submit error:", err);
+                    alert("Verification succeeded on-chain but failed to save to backend.");
                 });
             }
 
@@ -202,7 +237,7 @@ export default function Dashboard() {
 
             proofVerification.reset();
         }
-    }, [proofVerification.isSuccess, extension.proof?.provider, address]);
+    }, [proofVerification.isSuccess, backendPendingProof, extension.proof?.provider, address]);
 
     const platforms: Platform[] = logoOption.map((opt) => ({
         id: opt.id,
@@ -252,8 +287,11 @@ export default function Dashboard() {
         setIsModalOpen(true);
     };
 
+    // Use backend pending proof if available, otherwise fall back to extension proof
     const handleProcessProof = async () => {
-        if (!extension.proof?.solidityParams) {
+        const proofToUse = backendPendingProof || extension.proof;
+
+        if (!proofToUse?.solidityParams) {
             alert("No proof available to process");
             return;
         }
@@ -268,7 +306,7 @@ export default function Dashboard() {
             // The hook will handle switching
         }
 
-        await proofVerification.verifyOnChain(extension.proof.solidityParams);
+        await proofVerification.verifyOnChain(proofToUse.solidityParams);
     };
 
     const handleModalClose = () => {
@@ -384,11 +422,17 @@ export default function Dashboard() {
 
             {/* Main Dashboard Panel */}
             <div className="glass-card rounded-2xl overflow-hidden border border-border bg-surface/50 backdrop-blur-xl shadow-2xl min-h-[600px] flex flex-col">
+                {/* Panel Header */}
+                <div className="px-8 pt-8 pb-4 border-b border-border/50">
+                    <h2 className="text-xl font-semibold text-foreground">Identity Providers</h2>
+                    <p className="text-text-secondary text-sm mt-1">Select a provider to verify your identity</p>
+                </div>
+
                 {/* Panel Content */}
                 <div className="flex-1 p-8 grid grid-cols-1 lg:grid-cols-12 gap-12">
                     {/* Left Column: Apps Grid */}
                     <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
                             {platforms.map((platform) => {
                                 const hasPendingProof = onChainStatus[platform.id]?.pending;
                                 const isOnChainVerified = onChainStatus[platform.id]?.verified;
@@ -429,18 +473,18 @@ export default function Dashboard() {
                                             </div>
                                         )}
 
-                                        <div className={`w-full aspect-[4/5] rounded-lg bg-surface border flex items-center justify-center p-6 transition-colors
+                                        <div className={`w-full aspect-square rounded-xl bg-surface border flex items-center justify-center p-4 transition-all duration-300
                                             ${platform.enabled
-                                                ? "border-border group-hover:border-primary/30"
+                                                ? "border-border group-hover:border-primary/30 group-hover:shadow-lg"
                                                 : "border-border/30"
                                             }
                                         `}>
-                                            <div className={`transform transition-transform duration-300 ${platform.enabled ? "group-hover:scale-110" : ""}`}>
+                                            <div className={`transform transition-transform duration-300 ${platform.enabled ? "group-hover:scale-105" : ""}`}>
                                                 {platform.icon && (
                                                     <img
                                                         src={platform.icon}
                                                         alt={platform.name}
-                                                        className={`w-32 h-32 object-contain ${!platform.enabled ? "grayscale" : ""}`}
+                                                        className={`w-20 h-20 object-contain ${!platform.enabled ? "grayscale" : ""}`}
                                                     />
                                                 )}
                                             </div>
@@ -503,19 +547,19 @@ export default function Dashboard() {
                         </div>
 
                         {/* Score Stats */}
-                        <div className="space-y-4 w-full max-w-xs text-center">
-                            <div className="flex justify-between items-center p-3 rounded-lg bg-white/5 border border-border/50">
-                                <span className="text-text-secondary font-mono text-sm">KYC Score:</span>
-                                <span className="text-primary font-bold text-xl font-mono">{totalPoints}</span>
+                        <div className="space-y-3 w-full max-w-xs text-center">
+                            <div className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-border/50">
+                                <span className="text-text-secondary text-sm">KYC Score</span>
+                                <span className="text-primary font-bold text-2xl font-mono">{totalPoints}</span>
                             </div>
-                            <div className="flex justify-between items-center p-3 rounded-lg bg-white/5 border border-border/50">
-                                <span className="text-text-secondary font-mono text-sm">Verified Proofs:</span>
-                                <span className="text-compliance font-bold text-xl font-mono">{onChainVerifiedCount}</span>
+                            <div className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-border/50">
+                                <span className="text-text-secondary text-sm">Verified Proofs</span>
+                                <span className="text-compliance font-bold text-2xl font-mono">{onChainVerifiedCount}</span>
                             </div>
                             {pendingProofsCount > 0 && (
-                                <div className="flex justify-between items-center p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                                    <span className="text-yellow-500 font-mono text-sm">Pending Proofs:</span>
-                                    <span className="text-yellow-500 font-bold text-xl font-mono">{pendingProofsCount}</span>
+                                <div className="flex justify-between items-center p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+                                    <span className="text-yellow-500 text-sm">Pending Proofs</span>
+                                    <span className="text-yellow-500 font-bold text-2xl font-mono">{pendingProofsCount}</span>
                                 </div>
                             )}
                         </div>

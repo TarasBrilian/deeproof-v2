@@ -12,20 +12,20 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="w-full min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 text-center max-w-5xl mx-auto space-y-8 py-20">
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight animate-fade-in">
           The Invisible <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Fortress</span>
         </h1>
 
-        <p className="text-xl text-text-secondary max-w-2xl mx-auto">
+        <p className="text-xl text-text-secondary max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.1s' }}>
           Institutional-grade identity verification with zero-knowledge privacy.
           Your identity remains yours. The proof is all that matters.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <Link href="/apps/dashboard" className="btn-primary flex items-center gap-2 text-lg px-8 py-3">
             Launch App
           </Link>
-          <a href="#problem" className="flex items-center gap-2 text-text-secondary hover:text-foreground transition-colors px-8 py-3 border border-border rounded hover:border-text-muted">
+          <a href="#problem" className="flex items-center gap-2 text-text-secondary hover:text-foreground transition-colors px-8 py-3 border border-border rounded-lg hover:border-primary/50">
             Learn More
           </a>
         </div>
@@ -102,22 +102,22 @@ export default function Home() {
                 We use advanced arithmetic circuits to generate a proof $\pi$.
                 The Verifier function $V(x, \pi)$ returns true if and only if the Prover knows a secret witness $w$ such that $C(x, w) = 0$, without revealing $w$.
               </p>
-              <div className="glass-card p-6 rounded-lg text-left font-mono text-sm text-text-muted space-y-2">
+              <div className="glass-card p-6 rounded-lg text-left font-mono text-sm text-text-secondary space-y-2 border border-primary/10">
                 <p><span className="text-primary">function</span> prove(secret, publicInput) &#123;</p>
-                <p className="pl-4">return generateProof(circuit, secret, publicInput);</p>
+                <p className="pl-4 text-text-muted">return generateProof(circuit, secret, publicInput);</p>
                 <p>&#125;</p>
                 <p><span className="text-primary">function</span> verify(proof, publicInput) &#123;</p>
-                <p className="pl-4">return math.check(proof, publicInput) == <span className="text-success">true</span>;</p>
+                <p className="pl-4 text-text-muted">return math.check(proof, publicInput) == <span className="text-compliance">true</span>;</p>
                 <p>&#125;</p>
               </div>
             </div>
             <div className="flex-1 flex justify-center">
-              {/* Abstract Math Visual */}
-              <div className="relative w-64 h-64 border border-primary/20 rounded-full flex items-center justify-center animate-[spin_10s_linear_infinite]">
+              {/* Abstract Math Visual - Slowed down per design guidelines */}
+              <div className="relative w-64 h-64 border border-primary/20 rounded-full flex items-center justify-center animate-slow-spin">
                 <div className="absolute w-[120%] h-[1px] bg-primary/20 rotate-45"></div>
                 <div className="absolute w-[120%] h-[1px] bg-primary/20 -rotate-45"></div>
-                <div className="w-48 h-48 border border-primary/40 rounded-full flex items-center justify-center animate-[spin_5s_linear_infinite_reverse]">
-                  <div className="w-4 h-4 bg-primary rounded-full shadow-[0_0_15px_rgba(0,240,255,1)]"></div>
+                <div className="w-48 h-48 border border-primary/40 rounded-full flex items-center justify-center animate-slow-spin-reverse">
+                  <div className="w-4 h-4 bg-primary rounded-full shadow-[0_0_15px_rgba(0,240,255,0.8)]"></div>
                 </div>
               </div>
             </div>

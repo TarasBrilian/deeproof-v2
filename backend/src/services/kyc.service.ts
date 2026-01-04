@@ -9,6 +9,12 @@ interface SubmitKycInput {
     provider?: string;
     txHash?: string;
     kycScore?: number;
+    solidityParams?: {
+        a: string[];
+        b: string[][];
+        c: string[];
+        input: string[];
+    };
 }
 
 interface KycStatusCheck {
@@ -17,6 +23,7 @@ interface KycStatusCheck {
     kycScore: number;
     provider: string | null;
     verifiedAt: Date | null;
+    pendingProof: unknown | null;
 }
 
 /**
@@ -72,7 +79,12 @@ export async function submitKyc(input: SubmitKycInput): Promise<Kyc> {
                 kycScore: input.kycScore ?? existingKyc.kycScore,
                 status: input.txHash ? "VERIFIED" : "PENDING",
                 verifiedAt: input.txHash ? new Date() : null,
-                pendingProof: input.txHash ? null : { proofReference: input.proofReference },
+                pendingProof: input.txHash ? null : {
+                    proofReference: input.proofReference,
+                    solidityParams: input.solidityParams,
+                    provider: input.provider,
+                    commitment: input.commitment,
+                },
                 updatedAt: new Date(),
             })
             .where(eq(kycs.id, existingKyc.id))
@@ -92,7 +104,12 @@ export async function submitKyc(input: SubmitKycInput): Promise<Kyc> {
             kycScore: input.kycScore ?? (input.provider ? 20 : 0),
             status: input.txHash ? "VERIFIED" : "PENDING",
             verifiedAt: input.txHash ? new Date() : null,
-            pendingProof: input.txHash ? null : { proofReference: input.proofReference },
+            pendingProof: input.txHash ? null : {
+                proofReference: input.proofReference,
+                solidityParams: input.solidityParams,
+                provider: input.provider,
+                commitment: input.commitment,
+            },
         })
         .returning();
 
@@ -112,6 +129,7 @@ export async function getKycStatus(walletAddress: string): Promise<KycStatusChec
             kycScore: kycs.kycScore,
             provider: kycs.provider,
             verifiedAt: kycs.verifiedAt,
+            pendingProof: kycs.pendingProof,
         })
         .from(identities)
         .innerJoin(kycs, eq(kycs.identityId, identities.id))

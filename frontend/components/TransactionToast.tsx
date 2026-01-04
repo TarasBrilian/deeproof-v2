@@ -36,7 +36,7 @@ export function TransactionToast({ show, txHash, onClose, explorerUrl = "https:/
             className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
                 }`}
         >
-            <div className="bg-surface border border-green-500/50 rounded-xl p-4 shadow-2xl shadow-green-500/20 max-w-sm">
+            <div className="bg-surface border border-green-500/50 rounded-xl p-4 shadow-xl shadow-green-500/10 max-w-sm backdrop-blur-sm">
                 <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
                         <CheckCircleIcon className="w-6 h-6 text-green-500" />
