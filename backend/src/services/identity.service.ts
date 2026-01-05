@@ -1,5 +1,5 @@
 import { db } from "../db/index.js";
-import { identities, type Identity, type NewIdentity } from "../db/schema.js";
+import { identities, kycs, type Identity, type NewIdentity } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 
 interface BindIdentityInput {
@@ -67,6 +67,43 @@ export async function updateIdentityCommitment(
         .returning();
 
     return updated;
+}
+
+/**
+ * Connect wallet - ensure identity and default KYC record exist
+ */
+export async function connectIdentity(walletAddress: string): Promise<Identity> {
+    const normalizedAddress = walletAddress.toLowerCase();
+
+    // 1. Check if identity exists
+    let identity = await getIdentityByWallet(normalizedAddress);
+
+    if (!identity) {
+        // 2. Create identity if not exists
+        [identity] = await db
+            .insert(identities)
+            .values({
+                walletAddress: normalizedAddress,
+            })
+            .returning();
+    }
+
+    // 3. Ensure KYC record exists
+    const [existingKyc] = await db
+        .select()
+        .from(kycs)
+        .where(eq(kycs.identityId, identity.id))
+        .limit(1);
+
+    if (!existingKyc) {
+        await db.insert(kycs).values({
+            identityId: identity.id,
+            status: "PENDING",
+            kycScore: 0,
+        });
+    }
+
+    return identity;
 }
 
 /**

@@ -25,7 +25,7 @@ export default function Home() {
           <Link href="/apps/dashboard" className="btn-primary flex items-center gap-2 text-lg px-8 py-3">
             Launch App
           </Link>
-          <a href="#problem" className="flex items-center gap-2 text-text-secondary hover:text-foreground transition-colors px-8 py-3 border border-border rounded-lg hover:border-primary/50">
+          <a href="https://deeproof-docs.vercel.app/" className="flex items-center gap-2 text-text-secondary hover:text-foreground transition-colors px-8 py-3 border border-border rounded-lg hover:border-primary/50">
             Learn More
           </a>
         </div>

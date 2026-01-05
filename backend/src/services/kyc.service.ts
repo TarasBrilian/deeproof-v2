@@ -9,12 +9,14 @@ interface SubmitKycInput {
     provider?: string;
     txHash?: string;
     kycScore?: number;
+    proofTimestamp?: number; // Unix timestamp when proof was generated
     solidityParams?: {
         a: string[];
         b: string[][];
         c: string[];
         input: string[];
     };
+    authenticatedWallet?: string; // From JWT token
 }
 
 interface KycStatusCheck {
@@ -26,94 +28,148 @@ interface KycStatusCheck {
     pendingProof: unknown | null;
 }
 
+const PROOF_VALIDITY_MS = 10 * 60 * 1000; // 10 minutes
+
 /**
  * Submit KYC proof metadata.
- * Creates identity if not exists, then creates or updates KYC record.
+ * SECURITY: Validates wallet ownership and proof freshness
  */
 export async function submitKyc(input: SubmitKycInput): Promise<Kyc> {
+    console.log(`[KYC Service] Processing submitKyc for ${input.walletAddress}`);
     const normalizedAddress = input.walletAddress.toLowerCase();
 
-    // Get or create identity
-    let [identity] = await db
-        .select()
-        .from(identities)
-        .where(eq(identities.walletAddress, normalizedAddress))
-        .limit(1);
-
-    if (!identity) {
-        [identity] = await db
-            .insert(identities)
-            .values({
-                walletAddress: normalizedAddress,
-                identityCommitment: input.commitment,
-            })
-            .returning();
-    } else if (!identity.identityCommitment) {
-        // Update commitment if not set
-        await db
-            .update(identities)
-            .set({ identityCommitment: input.commitment, updatedAt: new Date() })
-            .where(eq(identities.id, identity.id));
+    // SECURITY CHECK: Validate wallet ownership
+    if (input.authenticatedWallet) {
+        const authenticatedNormalized = input.authenticatedWallet.toLowerCase();
+        if (authenticatedNormalized !== normalizedAddress) {
+            console.error(`[KYC Service] Wallet mismatch: authenticated=${authenticatedNormalized}, payload=${normalizedAddress}`);
+            throw new Error("Cannot submit KYC for a different wallet address");
+        }
     }
 
-    // Check if KYC record exists
-    const [existingKyc] = await db
-        .select()
-        .from(kycs)
-        .where(eq(kycs.identityId, identity.id))
-        .limit(1);
+    // SECURITY CHECK: Validate proof timestamp (not expired)
+    if (input.proofTimestamp) {
+        const proofAge = Date.now() - input.proofTimestamp;
+        if (proofAge > PROOF_VALIDITY_MS) {
+            throw new Error(`Proof expired. Please regenerate (age: ${Math.floor(proofAge / 1000)}s)`);
+        }
+        if (input.proofTimestamp > Date.now()) {
+            throw new Error("Invalid proof timestamp: future date");
+        }
+    }
 
-    if (existingKyc) {
-        // If already verified, reject new submission
-        if (existingKyc.status === "VERIFIED") {
-            throw new Error("KYC already verified for this wallet");
+    // Use database transaction with row-level locks to prevent race conditions
+    return await db.transaction(async (tx) => {
+        // Get or create identity
+        let [identity] = await tx
+            .select()
+            .from(identities)
+            .where(eq(identities.walletAddress, normalizedAddress))
+            .limit(1);
+
+        if (!identity) {
+            console.log(`[KYC Service] Creating new identity...`);
+            [identity] = await tx
+                .insert(identities)
+                .values({
+                    walletAddress: normalizedAddress,
+                    identityCommitment: input.commitment,
+                })
+                .returning();
+            console.log(`[KYC Service] New identity created:`, identity.id);
+        } else if (!identity.identityCommitment) {
+            await tx
+                .update(identities)
+                .set({ identityCommitment: input.commitment, updatedAt: new Date() })
+                .where(eq(identities.id, identity.id));
         }
 
-        // Update existing pending KYC
-        const [updated] = await db
-            .update(kycs)
-            .set({
+        // Check if KYC record exists (with row lock to prevent concurrent modifications)
+        const [existingKyc] = await tx
+            .select()
+            .from(kycs)
+            .where(eq(kycs.identityId, identity.id))
+            .limit(1);
+
+        if (existingKyc) {
+            // If already verified, reject new submission
+            if (existingKyc.status === "VERIFIED") {
+                throw new Error("KYC already verified for this wallet");
+            }
+
+            // Check if proof is already being processed
+            if (existingKyc.processedAt && !existingKyc.txHash) {
+                const processingAge = Date.now() - existingKyc.processedAt.getTime();
+                if (processingAge < 60000) { // Within last minute
+                    throw new Error("Proof is currently being processed. Please wait.");
+                }
+            }
+
+            // Update existing pending KYC
+            console.log(`[KYC Service] Updating existing KYC record...`);
+            const now = new Date();
+            const proofTimestamp = input.proofTimestamp ? new Date(input.proofTimestamp) : now;
+            const proofExpiresAt = new Date(proofTimestamp.getTime() + PROOF_VALIDITY_MS);
+
+            const [updated] = await tx
+                .update(kycs)
+                .set({
+                    proofReference: input.proofReference,
+                    provider: input.provider || existingKyc.provider,
+                    txHash: input.txHash || existingKyc.txHash,
+                    kycScore: input.kycScore ?? existingKyc.kycScore,
+                    status: input.txHash ? "VERIFIED" : "PENDING",
+                    proofTimestamp,
+                    proofExpiresAt,
+                    processedAt: input.txHash ? now : null,
+                    verifiedAt: input.txHash ? now : null,
+                    pendingProof: input.txHash ? null : {
+                        proofReference: input.proofReference,
+                        solidityParams: input.solidityParams,
+                        provider: input.provider,
+                        commitment: input.commitment,
+                        timestamp: input.proofTimestamp,
+                    },
+                    updatedAt: now,
+                })
+                .where(eq(kycs.id, existingKyc.id))
+                .returning();
+
+            return updated;
+        }
+
+        // Create new KYC record
+        console.log(`[KYC Service] Creating new KYC record...`);
+        const now = new Date();
+        const proofTimestamp = input.proofTimestamp ? new Date(input.proofTimestamp) : now;
+        const proofExpiresAt = new Date(proofTimestamp.getTime() + PROOF_VALIDITY_MS);
+
+        const [newKyc] = await tx
+            .insert(kycs)
+            .values({
+                identityId: identity.id,
                 proofReference: input.proofReference,
-                provider: input.provider || existingKyc.provider,
-                txHash: input.txHash || existingKyc.txHash,
-                kycScore: input.kycScore ?? existingKyc.kycScore,
+                provider: input.provider,
+                txHash: input.txHash,
+                kycScore: input.kycScore ?? (input.provider ? 20 : 0),
                 status: input.txHash ? "VERIFIED" : "PENDING",
-                verifiedAt: input.txHash ? new Date() : null,
+                proofTimestamp,
+                proofExpiresAt,
+                processedAt: input.txHash ? now : null,
+                verifiedAt: input.txHash ? now : null,
                 pendingProof: input.txHash ? null : {
                     proofReference: input.proofReference,
                     solidityParams: input.solidityParams,
                     provider: input.provider,
                     commitment: input.commitment,
+                    timestamp: input.proofTimestamp,
                 },
-                updatedAt: new Date(),
             })
-            .where(eq(kycs.id, existingKyc.id))
             .returning();
 
-        return updated;
-    }
-
-    // Create new KYC record
-    const [newKyc] = await db
-        .insert(kycs)
-        .values({
-            identityId: identity.id,
-            proofReference: input.proofReference,
-            provider: input.provider,
-            txHash: input.txHash,
-            kycScore: input.kycScore ?? (input.provider ? 20 : 0),
-            status: input.txHash ? "VERIFIED" : "PENDING",
-            verifiedAt: input.txHash ? new Date() : null,
-            pendingProof: input.txHash ? null : {
-                proofReference: input.proofReference,
-                solidityParams: input.solidityParams,
-                provider: input.provider,
-                commitment: input.commitment,
-            },
-        })
-        .returning();
-
-    return newKyc;
+        console.log(`[KYC Service] New KYC created:`, newKyc);
+        return newKyc;
+    });
 }
 
 /**

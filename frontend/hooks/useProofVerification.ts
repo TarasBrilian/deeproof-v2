@@ -44,15 +44,50 @@ export function useProofVerification(): UseProofVerificationReturn {
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [txHash, setTxHash] = useState<string | null>(null);
+    const [pendingTxHash, setPendingTxHash] = useState<string | null>(null);
 
     const { switchChainAsync } = useSwitchChain();
     const { writeContractAsync } = useWriteContract();
+
+    // Wait for transaction confirmation
+    const { data: receipt, isError: isReceiptError } = useWaitForTransactionReceipt({
+        hash: pendingTxHash as `0x${string}` | undefined,
+        chainId: mantleSepolia.id,
+    });
+
+    // Handle transaction confirmation
+    useEffect(() => {
+        if (receipt && pendingTxHash) {
+            if (receipt.status === "success") {
+                console.log("[ProofVerification] Transaction confirmed successfully");
+                setTxHash(pendingTxHash);
+                setIsSuccess(true);
+                setIsLoading(false);
+                setPendingTxHash(null);
+            } else {
+                console.error("[ProofVerification] Transaction reverted");
+                setError("Transaction failed: reverted on-chain");
+                setIsLoading(false);
+                setPendingTxHash(null);
+            }
+        }
+    }, [receipt, pendingTxHash]);
+
+    // Handle receipt error
+    useEffect(() => {
+        if (isReceiptError && pendingTxHash) {
+            setError("Failed to confirm transaction");
+            setIsLoading(false);
+            setPendingTxHash(null);
+        }
+    }, [isReceiptError, pendingTxHash]);
 
     const verifyOnChain = useCallback(async (params: SolidityParams): Promise<boolean> => {
         setIsLoading(true);
         setError(null);
         setIsSuccess(false);
         setTxHash(null);
+        setPendingTxHash(null);
 
         try {
             // Switch to Mantle Sepolia if needed
@@ -98,10 +133,13 @@ export function useProofVerification(): UseProofVerificationReturn {
                 chainId: mantleSepolia.id,
             });
 
-            console.log("Transaction hash:", hash);
-            setTxHash(hash);
-            setIsSuccess(true);
-            setIsLoading(false);
+            console.log("Transaction submitted:", hash);
+            console.log("Waiting for confirmation...");
+
+            // Set pending tx hash to trigger useWaitForTransactionReceipt
+            setPendingTxHash(hash);
+
+            // Don't set success yet - wait for confirmation
             return true;
 
         } catch (err) {
@@ -118,6 +156,7 @@ export function useProofVerification(): UseProofVerificationReturn {
         setIsSuccess(false);
         setError(null);
         setTxHash(null);
+        setPendingTxHash(null);
     }, []);
 
     return {
@@ -129,5 +168,3 @@ export function useProofVerification(): UseProofVerificationReturn {
         reset,
     };
 }
-
-

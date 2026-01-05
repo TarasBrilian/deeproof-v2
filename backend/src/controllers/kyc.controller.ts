@@ -11,7 +11,17 @@ export async function submitKyc(
     next: NextFunction
 ): Promise<void> {
     try {
-        const { walletAddress, proofReference, commitment, provider, txHash, kycScore } = req.body;
+        const { walletAddress, proofReference, commitment, provider, txHash, kycScore, solidityParams, proofTimestamp } = req.body;
+        console.log(`[KYC Controller] Received submitKyc request for ${walletAddress}`, {
+            proofReference,
+            commitment,
+            provider,
+            txHash,
+            kycScore
+        });
+
+        // Get authenticated wallet from JWT (if middleware attached it)
+        const authenticatedWallet = (req as any).user?.walletAddress;
 
         const kyc = await kycService.submitKyc({
             walletAddress,
@@ -20,7 +30,12 @@ export async function submitKyc(
             provider,
             txHash,
             kycScore,
+            solidityParams,
+            proofTimestamp,
+            authenticatedWallet, // Pass authenticated wallet for validation
         });
+
+        console.log(`[KYC Controller] submitKyc success:`, kyc);
 
         res.status(201).json({
             success: true,

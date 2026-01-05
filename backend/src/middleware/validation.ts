@@ -34,6 +34,13 @@ export const bindIdentitySchema = z.object({
     identityCommitment: z.string().optional(),
 });
 
+// Connect identity schema
+export const connectIdentitySchema = z.object({
+    walletAddress: walletAddressSchema,
+    signature: z.string().min(1, "Signature required"),
+    message: z.string().min(1, "Message required"),
+});
+
 // KYC submit schema
 export const submitKycSchema = z.object({
     walletAddress: walletAddressSchema,

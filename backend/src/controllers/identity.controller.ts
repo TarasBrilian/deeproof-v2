@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { verifyMessage } from "viem";
 import * as identityService from "../services/identity.service.js";
 
 /**
@@ -25,6 +26,53 @@ export async function bindIdentity(
                 id: identity.id,
                 walletAddress: identity.walletAddress,
                 identityCommitment: identity.identityCommitment,
+                createdAt: identity.createdAt,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * POST /identity/connect
+ * Authenticate wallet via signature and ensure identity exists
+ */
+export async function connect(
+    req: Request,
+    res: Response,
+    next: NextFunction
+): Promise<void> {
+    try {
+        const { walletAddress, signature, message } = req.body;
+
+        const valid = await verifyMessage({
+            address: walletAddress,
+            message: message,
+            signature: signature,
+        });
+
+        if (!valid) {
+            res.status(401).json({
+                success: false,
+                error: "Invalid signature",
+            });
+            return;
+        }
+
+        const identity = await identityService.connectIdentity(walletAddress);
+
+        // Generate JWT token
+        const { generateToken } = await import("../middleware/auth.middleware.js");
+        const token = generateToken(walletAddress);
+
+        res.json({
+            success: true,
+            message: "Wallet connected",
+            token,
+            identity: {
+                id: identity.id,
+                walletAddress: identity.walletAddress,
                 createdAt: identity.createdAt,
             },
         });

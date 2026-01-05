@@ -27,6 +27,10 @@ export const kycs = pgTable(
         proofReference: text("proof_reference"), // Hash or IPFS CID, NOT raw data
         pendingProof: jsonb("pending_proof"), // Stores unresolved proof metadata
         txHash: text("tx_hash"), // On-chain verification transaction
+        // Proof security fields
+        proofTimestamp: timestamp("proof_timestamp"), // When proof was generated
+        proofExpiresAt: timestamp("proof_expires_at"), // Proof expiry (10 min from generation)
+        processedAt: timestamp("processed_at"), // When proof was submitted on-chain
         verifiedAt: timestamp("verified_at"),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at").defaultNow().notNull(),

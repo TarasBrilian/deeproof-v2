@@ -3,7 +3,7 @@
  * Handles communication with the off-chain coordination layer
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 console.log("[API] Configured Backend URL:", BACKEND_URL);
 
 interface ApiResponse<T> {
@@ -11,6 +11,7 @@ interface ApiResponse<T> {
     error?: string;
     message?: string;
     data?: T;
+    token?: string; // JWT token from connect endpoint
 }
 
 interface SolidityParams {
@@ -25,6 +26,7 @@ interface PendingProof {
     solidityParams: SolidityParams;
     provider: string;
     commitment: string;
+    timestamp?: number;
 }
 
 interface KycStatusResponse {
@@ -51,6 +53,7 @@ interface SubmitKycPayload {
     txHash?: string;
     kycScore?: number;
     solidityParams?: SolidityParams;
+    proofTimestamp?: number; // Unix timestamp when proof was generated
 }
 
 interface BindIdentityPayload {
@@ -58,14 +61,53 @@ interface BindIdentityPayload {
     identityCommitment?: string;
 }
 
+interface ConnectIdentityPayload {
+    walletAddress: string;
+    signature: string;
+    message: string;
+}
+
+/**
+ * Get Authorization header with JWT token
+ */
+function getAuthHeaders(token?: string | null): HeadersInit {
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+}
+
+/**
+ * Connect wallet with signature
+ * Returns JWT token on success
+ */
+export async function connectIdentity(payload: ConnectIdentityPayload): Promise<ApiResponse<unknown>> {
+    try {
+        const response = await fetch(`${BACKEND_URL}/identity/connect`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("[API] connectIdentity error:", error);
+        return { success: false, error: "Failed to connect to backend" };
+    }
+}
+
 /**
  * Bind wallet address to a new identity
  */
-export async function bindIdentity(payload: BindIdentityPayload): Promise<ApiResponse<unknown>> {
+export async function bindIdentity(payload: BindIdentityPayload, token?: string | null): Promise<ApiResponse<unknown>> {
     try {
         const response = await fetch(`${BACKEND_URL}/identity/bind`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(token),
             body: JSON.stringify(payload),
         });
 
@@ -79,16 +121,24 @@ export async function bindIdentity(payload: BindIdentityPayload): Promise<ApiRes
 
 /**
  * Submit KYC proof metadata to backend
+ * Requires authentication token
  */
-export async function submitKyc(payload: SubmitKycPayload): Promise<ApiResponse<unknown>> {
+export async function submitKyc(payload: SubmitKycPayload, token?: string | null): Promise<ApiResponse<unknown>> {
     try {
         const response = await fetch(`${BACKEND_URL}/kyc/submit`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(token),
             body: JSON.stringify(payload),
         });
 
         const data = await response.json();
+
+        // Handle 401 Unauthorized (expired/invalid token)
+        if (response.status === 401) {
+            console.error("[API] Authentication failed - token invalid or expired");
+            return { success: false, error: "Authentication required. Please reconnect your wallet." };
+        }
+
         return data;
     } catch (error) {
         console.error("[API] submitKyc error:", error);
@@ -98,13 +148,20 @@ export async function submitKyc(payload: SubmitKycPayload): Promise<ApiResponse<
 
 /**
  * Get KYC status for a wallet address
+ * Requires authentication token
  */
-export async function getKycStatus(walletAddress: string): Promise<KycStatusResponse | null> {
+export async function getKycStatus(walletAddress: string, token?: string | null): Promise<KycStatusResponse | null> {
     try {
-        const response = await fetch(`${BACKEND_URL}/kyc/status/${walletAddress}`);
+        const response = await fetch(`${BACKEND_URL}/kyc/status/${walletAddress}`, {
+            headers: getAuthHeaders(token),
+        });
 
         if (!response.ok) {
             if (response.status === 404) return null;
+            if (response.status === 401) {
+                console.error("[API] Authentication required for getKycStatus");
+                return null;
+            }
             throw new Error(`HTTP ${response.status}`);
         }
 
@@ -148,3 +205,4 @@ export async function protocolCheck(walletAddress: string): Promise<ProtocolChec
         return null;
     }
 }
+

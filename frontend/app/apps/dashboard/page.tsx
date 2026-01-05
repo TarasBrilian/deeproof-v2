@@ -6,10 +6,11 @@ import VerificationModal from "@/components/VerificationModal";
 import { TransactionToast } from "@/components/TransactionToast";
 import { useDeepproofExtension } from "@/hooks/useDeepproofExtension";
 import { useProofVerification } from "@/hooks/useProofVerification";
+import { useAuth } from "@/hooks/useAuth";
 import { useAppKit } from "@reown/appkit/react";
-import { useAccount, useChainId } from "wagmi";
+import { useAccount, useChainId, useSignMessage } from "wagmi";
 import { mantleSepolia } from "@/lib/wagmiConfig";
-import { submitKyc, getKycStatus } from "@/lib/api";
+import { submitKyc, getKycStatus, connectIdentity } from "@/lib/api";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
@@ -105,6 +106,9 @@ export default function Dashboard() {
     const { address, isConnected } = useAccount();
     const chainId = useChainId();
 
+    // Authentication
+    const auth = useAuth();
+
     // Extension integration
     const extension = useDeepproofExtension();
 
@@ -118,11 +122,50 @@ export default function Dashboard() {
         }
     }, [extension.installed, extension.checking]);
 
-    // Fetch existing KYC status from backend when wallet connects
+    // Signature state
+    const { signMessageAsync } = useSignMessage();
+
+    // Initial connection and signature flow
     useEffect(() => {
-        if (address && isConnected) {
+        const handleConnection = async () => {
+            if (address && isConnected && !auth.isAuthenticated && !auth.isLoading) {
+                try {
+                    const message = `Sign in to Deeproof\nWallet: ${address}\nTimestamp: ${Date.now()}`;
+
+                    const signature = await signMessageAsync({
+                        message,
+                    });
+
+                    const result = await connectIdentity({
+                        walletAddress: address,
+                        signature,
+                        message,
+                    });
+
+                    if (result.success && result.token) {
+                        console.log("[Auth] Wallet connected & verified");
+                        auth.login(address, result.token);
+                    } else {
+                        console.error("[Auth] Verification failed result:", result);
+                        alert(`Verification failed: ${result.error || "Unknown error"}`);
+                    }
+                } catch (error) {
+                    console.error("[Auth] Signature rejected or failed:", error);
+                    alert(`Signature failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+                }
+            }
+        };
+
+        if (address && isConnected && !auth.isAuthenticated && !auth.isLoading) {
+            handleConnection();
+        }
+    }, [address, isConnected, auth.isAuthenticated, auth.isLoading, signMessageAsync]);
+
+    // Fetch existing KYC status from backend when wallet connects (AND authenticated)
+    useEffect(() => {
+        if (address && isConnected && auth.isAuthenticated && auth.token) {
             setBackendStatusFetched(false);
-            getKycStatus(address).then(status => {
+            getKycStatus(address, auth.token).then(status => {
                 if (status?.status === "VERIFIED" && status.provider) {
                     // User is verified
                     const providerId = status.provider.toLowerCase();
@@ -155,9 +198,11 @@ export default function Dashboard() {
                 setBackendStatusFetched(true);
             });
         } else {
-            setBackendStatusFetched(true);
+            // If not connected, we consider fetched true to unblock any waiting logic? 
+            // Or false? Logic flow: only fetch if connected.
+            if (!isConnected) setBackendStatusFetched(true);
         }
-    }, [address, isConnected]);
+    }, [address, isConnected, auth.isAuthenticated, auth.token]);
 
     // When extension provides a NEW proof, update local status to PENDING
     // But DO NOT auto-submit to backend. We wait for user to click "Process".
@@ -204,7 +249,10 @@ export default function Dashboard() {
             setOnChainVerifiedCount(prev => prev + 1);
 
             // Submit to backend with txHash to mark as VERIFIED
-            if (txHashToStore && currentProof.commitment) {
+            if (txHashToStore && currentProof.commitment && auth.token) {
+                // Add proof timestamp if available from extension
+                const proofTimestamp = (currentProof as any).timestamp || Date.now();
+
                 submitKyc({
                     walletAddress: address,
                     proofReference: currentProof.commitment,
@@ -212,7 +260,8 @@ export default function Dashboard() {
                     provider: currentProof.provider,
                     txHash: txHashToStore,
                     kycScore: 20,
-                }).then(result => {
+                    proofTimestamp,
+                }, auth.token).then(result => {
                     if (result && result.success) {
                         console.log("[Backend] KYC VERIFIED submitted:", result);
                         // Only clear proof if backend submission succeeded
