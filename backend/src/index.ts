@@ -9,12 +9,12 @@ import { protocolRouter } from "./routes/protocol.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app: Express = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 
 // Security middleware
 app.use(helmet());
 
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+const corsOrigin = process.env.CORS_ORIGIN;
 console.log(`[Deeproof Backend] CORS Origin allowed: ${corsOrigin}`);
 
 app.use(
